@@ -114,6 +114,28 @@
   [^RpcClient client ^String item-id]
   (rpc-delete client (format "/items/%s.json" item-id)))
 
+;; USER to ITEM behavior
+(defn add-action
+  "adds action that connects the user and the item"
+  ([^RpcClient client ^String user-id ^String item-id action]
+   (add-action client user-id item-id action 0 {}))
+  ([^RpcClient client ^String user-id ^String item-id action rate]
+   (add-action client user-id item-id action rate {}))
+  ([^RpcClient client ^String user-id ^String item-id action rate extra-params]
+    (let [action_ (if (keyword? action)
+                    (name action)
+                    (str action))]
+      (rpc-post client
+                "/actions/u2i.json"
+                "" ;; send a emtpy body
+                (merge
+                  {:pio_uid user-id
+                  :pio_iid item-id
+                  :pio_action action_}
+                  (when (= "rate" action_)
+                    {:pio_rate rate})
+                  extra-params)))))
+
 (comment
 
   (require '[shaman.core :as shaman] :reload)

@@ -76,3 +76,14 @@
         (shaman/delete-item client "item1") => success-msg
         ;; test with not existing item
         (shaman/delete-item client "item2") => success-msg))))
+
+(facts "add-action"
+  (let [client (shaman/make-client "10.0.10.2" "abc")
+        success-msg {:message "Action like recorded"}]
+    (fact "saves properly new action"
+      (with-fake-http [#"/actions/u2i" {:status 201
+                                       :body (generate-string success-msg)}]
+        (shaman/add-action client "user1" "item1" :like) => success-msg
+        (shaman/add-action client "user1" "item1" :rate 0) => success-msg
+        (shaman/add-action client "user1" "item1" :rate 0 {:pio_latlng "0,0"})
+          => success-msg))))
