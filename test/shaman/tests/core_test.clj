@@ -45,3 +45,34 @@
       (with-fake-http [#"/users" {:status 200
                                   :body (generate-string {:message "User deleted"})}]
         (shaman/delete-user client "313") => {:message "User deleted"}))))
+
+(facts "add-item"
+  (let [client (shaman/make-client "10.0.10.2" "abc")
+        success-msg {:message "Item created"}]
+    (fact "add new item into the dataset"
+      (with-fake-http [#"/items" {:status 201
+                                  :body (generate-string success-msg)}]
+        (shaman/add-item client "item1" ["kikka" "kukka"]) => success-msg
+        (shaman/add-item client "item2" ["kukka"] {:prop "active"}) => success-msg))))
+
+(facts "get-item"
+  (let [client (shaman/make-client "10.0.10.2" "abc")
+        success-msg {:pio_iid "item1" :pio_itypes ["kikka" "kukka"]}]
+    (fact "returns expected answer if item exists"
+      (with-fake-http [#"/items" {:status 200
+                                  :body (generate-string success-msg)}]
+        (shaman/get-item client "item1") => success-msg))
+    (fact "returns nil if the item doesn exist"
+      (with-fake-http [#"/items" {:status 404
+                                  :body (generate-string {:message "Cannot find item"})}]
+        (shaman/get-item client "item2") => nil))))
+
+(facts "delete-item"
+  (let [client (shaman/make-client "10.0.10.2" "abc")
+        success-msg {:message "Item deleted"}]
+    (fact "deletes item if the item exists"
+      (with-fake-http [#"/items" {:status 200
+                                  :body (generate-string success-msg)}]
+        (shaman/delete-item client "item1") => success-msg
+        ;; test with not existing item
+        (shaman/delete-item client "item2") => success-msg))))

@@ -91,4 +91,34 @@
   [^RpcClient client ^String user-id]
   (rpc-delete client (format "/users/%s.json" user-id)))
 
+;; ITEM
+(defn add-item
+  "adds new item into the data set"
+  ([^RpcClient client ^String item-id item-types]
+    (add-item client item-id item-types {}))
+  ([^RpcClient client ^String item-id item-types params]
+    (rpc-post
+      client "/items.json" ""
+      (merge
+        {:pio_iid item-id
+         :pio_itypes (apply str (interpose "," item-types))}
+        (dissoc params :pio_ct)))))
+
+(defn get-item
+  "request a data of the item"
+  [^RpcClient client ^String item-id]
+  (rpc-get client (format "/items/%s.json" item-id)))
+
+(defn delete-item
+  "delete item with the item-id"
+  [^RpcClient client ^String item-id]
+  (rpc-delete client (format "/items/%s.json" item-id)))
+
+(comment
+
+  (require '[shaman.core :as shaman] :reload)
+  (def api-key "pK4cwVhBEMk7IWRTpXd869X5EUjKC9vNeISURqaRaZnXlpWnAeVTlJxWkZTZlkD0")
+  (def client (shaman/make-client "10.0.10.2" api-key))
+
+  )
 
