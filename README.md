@@ -2,11 +2,12 @@
 
 [![Build Status](https://travis-ci.org/timgluz/shaman.svg)](https://travis-ci.org/timgluz/shaman)
 
+
 Shaman is a Clojure client for Prediction.IO API. Shaman helps you to manage datasets on the recommender engine and get recommendations for users or topN suggestions for similar items.
 
 [shaman "0.1.0-SNAPSHOT"]
 
-[API reference]()
+[API reference](http://timgluz.github.io/shaman/shaman.core.html)
 
 ## Usage
 
