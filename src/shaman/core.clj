@@ -175,7 +175,7 @@
     (merge
       {:pio_uid user-id
       :pio_n max-n}
-      (dissoc extra-params :item-types :attributes :latlng :unit)
+      (dissoc extra-params :item-types :attributes :latlng :within :unit)
       (when-not (empty? item-types)
         {:pio_itypes (to-csv-line item-types)})
       (when-not (empty? attributes)
@@ -183,7 +183,31 @@
       (when-not (empty? latlng)
         {:pio_latlng (to-csv-line)})
       (when-not (nil? within)
-        {:pio_within within}))))
+        {:pio_within within
+         :pio_unit unit}))))
+
+
+(defn suggest-topn
+  "suggests topN most similar items"
+  [^RpcClient client ^String engine-name ^String item-id ^Long max-n
+   & {:keys [item-types attributes latlng within unit]
+      :or {unit "km"}
+      :as extra-params}]
+  (rpc-get
+    client
+    (str "/engines/itemsim/" engine-name "/topn.json")
+    (merge
+      {:pio_iid item-id :pio_n max-n}
+      (dissoc extra-params :item-types :attributes :latlng :within :unit)
+      (when-not (nil? item-types)
+        {:pio_itypes (to-csv-line item-types)}
+      (when-not (nil? attributes)
+        {:pio_attributes (to-csv-line item-types)})
+      (when-not (nil? latlng)
+        {:pio_latlng (to-csv-line latlng)})
+      (when-not (nil? within)
+        {:pio_within within
+         :pio_unit unit})))))
 
 (comment
 

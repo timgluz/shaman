@@ -103,3 +103,20 @@
       (with-fake-http [#"/engines/itemrec" {:status 404
                                             :body (generate-string "No information")}]
         (shaman/recommend-topn client "oracle3" "userN" 3) => nil))))
+
+
+(facts "suggest-topn"
+  (let [client (shaman/make-client "10.0.10.2" "abc")
+        success-msg {:pio_iids ["item2" "item1"]}]
+    (fact "returns topn similar items"
+      (with-fake-http [#"/engines/itemsim" {:status 200
+                                            :body (generate-string success-msg)}]
+        (shaman/suggest-topn client "simson1" "item1" 2) => success-msg
+        (shaman/suggest-topn client "simson1" "item1" 3 :item-types ["kikka" "kukka"])
+          => success-msg
+        (shaman/suggest-topn client "simson1" "item3" 2 :pio_itypes "kikka,kukka")
+          => success-msg))
+    (fact "returns nil when recommender has no information"
+      (with-fake-http [#"/engines/itemsim" {:status 404
+                                            :body (generate-string "No information")}]
+        (shaman/suggest-topn client "simsonN" "itemX" 3) => nil))))
