@@ -19,7 +19,7 @@
 (defn response-handler
   "handles api responses"
   [{:keys [status body error] :as resp}]
-  (log/debug resp)
+  ;;(log/debug resp)
   (if (and
         (nil? error)
         (< 199 status 300))
