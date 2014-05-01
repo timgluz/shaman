@@ -16,7 +16,6 @@
       (:api-key client) => "abc"
       (:port client) => 1234)))
 
-
 (facts "get-user"
   (let [client (shaman/make-client "10.0.10.2" "abc")]
     (fact "returns proper user data if user exists"
