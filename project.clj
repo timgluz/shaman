@@ -16,6 +16,6 @@
                               [http-kit.fake "0.2.2"]]}}
   :codox {:output-dir "docs/codox"
           :writer codox.writer.html/write-docs
-          :src-dir-uri "http://github.com/timgluz/shaman/blob/master"
+          :src-dir-uri "http://github.com/timgluz/shaman/blob/master/"
           :src-linenum-anchor-prefix "L"})
 
