@@ -136,6 +136,55 @@
                     {:pio_rate rate})
                   extra-params)))))
 
+;; RECOMMEND
+(defn to-csv-line
+  "converts vector of string into commaseparated string"
+  [strings]
+  (apply str (interpose \, strings)))
+
+(defn recommend-topn
+  "recommends topN items to user
+
+  Required arguments:
+    client      - a initialized RpcClient
+    engine-name - a name of recommendation engine
+    user-id     - a id of user
+    max-n       - a number of result should it return
+
+  Optional arguments:
+    :item-types - a vector of string of item's type, [\"soup\", \"cheap\"]
+    :attributes - a vector of string with names of attributes to return
+    :latlng     - a tuple of coordinates, [59.345 34.234]
+    :within     - to specify a bounding distance
+    :unit       - a unit of length of the :within argument
+
+    You can also pass raw optional arguments (:pio_<argname>)
+    as it's specified on the official PredictionIO API documentation,
+    but then you have to take care of proper formatting by yourself
+  Usage:
+    (recommend-topn client \"oracle1\" \"user1\" 10)
+    (recommend-topn client \"oracle1\" \"user2\" 5
+      :item-types [\"soup\" \"spicey\"] :pio_attributes \"price,name\")"
+  [^RpcClient client ^String engine-name ^String user-id ^Long max-n
+    & {:keys [item-types attributes latlng unit within]
+       :or {item-types [] attributes [] latlng [] unit "km"}
+       :as extra-params}]
+  (rpc-get
+    client
+    (str "/engines/itemrec/" engine-name "/topn.json")
+    (merge
+      {:pio_uid user-id
+      :pio_n max-n}
+      (dissoc extra-params :item-types :attributes :latlng :unit)
+      (when-not (empty? item-types)
+        {:pio_itypes (to-csv-line item-types)})
+      (when-not (empty? attributes)
+        {:pio_attributes (to-csv-line item-types)})
+      (when-not (empty? latlng)
+        {:pio_latlng (to-csv-line)})
+      (when-not (nil? within)
+        {:pio_within within}))))
+
 (comment
 
   (require '[shaman.core :as shaman] :reload)

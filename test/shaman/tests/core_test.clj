@@ -87,3 +87,19 @@
         (shaman/add-action client "user1" "item1" :rate 0) => success-msg
         (shaman/add-action client "user1" "item1" :rate 0 {:pio_latlng "0,0"})
           => success-msg))))
+
+(facts "recommend-topn"
+  (let [client (shaman/make-client "10.0.10.2" "abc")
+        success-msg {:pio_iids ["item2" "item3"]}]
+    (fact "returns topn recommendations"
+      (with-fake-http [#"/engines/itemrec" {:status 200
+                                            :body (generate-string success-msg)}]
+        (shaman/recommend-topn client "oracle1" "user1" 2) => success-msg
+        (shaman/recommend-topn client "oracle1" "user2" 2 :item-types ["kikka" "kukka"])
+          => success-msg
+        (shaman/recommend-topn client "oracle1" "user2" 2 :pio_itypes "kikka,kukka")
+          => success-msg))
+    (fact "returns nil when recommender has no info or fails"
+      (with-fake-http [#"/engines/itemrec" {:status 404
+                                            :body (generate-string "No information")}]
+        (shaman/recommend-topn client "oracle3" "userN" 3) => nil))))
