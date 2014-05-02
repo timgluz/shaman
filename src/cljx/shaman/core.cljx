@@ -1,7 +1,12 @@
 (ns shaman.core
-  (:require [org.httpkit.client :as http]
-            [cheshire.core :refer [parse-string generate-string]]
-            [taoensso.timbre :as log]))
+  (:require
+    #+clj [org.httpkit.client :as http]
+    #+clj [cheshire.core :refer [parse-string generate-string]]
+    #+clj [taoensso.timbre :as log]
+    #+cljs [ajax.core :as http]))
+
+#+clj (set! *warn-on-reflection* true)
+
 
 ;; helper functions
 (defn to-csv-line
@@ -9,13 +14,22 @@
   [strings]
   (apply str (interpose \, strings)))
 
+;;only needed for Clojure, cljs-ajax parses json for us
+#+clj
 (defn parse-json
-  [json-string]
+  [^String json-string]
   (try
     (parse-string json-string true)
     (catch Exception e
       (log/error "Invalid json-string\n" json-string "\n" (.getMessage e)))))
 
+(defn to-json
+  "converts Clojure data into JSON"
+  [data]
+  #+clj (generate-string data)
+  #+cljs (clj->js data))
+
+#+clj
 (defn response-handler
   "handles api responses"
   [{:keys [status body error] :as resp}]
@@ -26,52 +40,73 @@
     (parse-json body)
     (log/error "API error: " (or error body))))
 
-(defn build-url
-  "builds proper URL for predictionIO API"
-  [client path]
-  (str (:host client) ":" (:port client) path))
+#+cljs
+(defn response-handler
+  "handles clj-ajax responses"
+  [{:keys [status response] :as resp}]
+  (.debug js/console (str "Got response:" resp))
+  (if (< 199 status 300)
+    response
+    (.error js/console (str "Request error: " status))))
 
 ;; -- CLIENT protocols
 (defprotocol RPC
+  (build-url [this path])
+  (execute-request [this request-map])
   (rpc-get [this path] [this path params])
   (rpc-post [this path data] [this path data params])
   (rpc-delete [this path] [this path param]))
 
-;; -- Client
+;; -- Clients
 (defrecord RpcClient [host port api-key]
   RPC
-  (rpc-get [this path]
-    (rpc-get this path nil))
-  (rpc-get [this path params]
-    (response-handler
-      @(http/request {:method :get
-                      :url (build-url this path)
-                      :query-params (merge
-                                      {:pio_appkey (:api-key this)}
-                                      params)})))
-  (rpc-post [this path data]
-    (rpc-post this path data {}))
-  (rpc-post [this path data params]
-    (response-handler
-      @(http/request {:method :post
-                      :url (build-url this path)
-                      :query-params (merge
-                                      {:pio_appkey (:api-key this)}
-                                      params)
-                      :body (generate-string data)})))
-  (rpc-delete [this path]
-    (rpc-delete this path {}))
-  (rpc-delete [this path params]
-    (response-handler
-      @(http/request {:method :delete
-                      :url (build-url this path)
-                      :query-params (merge
-                                      {:pio_appkey (:api-key this)}
-                                      params)}))))
+  (build-url [this path]
+    (str (:host this) ":" (:port this) path))
+
+  (execute-request [this request-map]
+      (response-handler
+        #+clj @(http/request request-map)
+        #+cljs (let [response (atom "no response")]
+                  (http/ajax-request
+                    (:url request-map)
+                    (:method request-map)
+                    {:params (:query-params request-map)
+                     :format (http/json-format {:keywords? true})
+                     :handler #(reset! response %)})
+                  @response)))
+
+    (rpc-get [this path]
+      (rpc-get this path nil))
+    (rpc-get [this path params]
+      (execute-request this
+                      {:method :get
+                        :url (build-url this path)
+                        :query-params (merge
+                                        {:pio_appkey (:api-key this)}
+                                        params)}))
+    (rpc-post [this path data]
+      (rpc-post this path data {}))
+    (rpc-post [this path data params]
+      (execute-request this
+                      {:method :post
+                        :url (build-url this path)
+                        :query-params (merge
+                                        {:pio_appkey (:api-key this)}
+                                        params)
+                        :body (to-json data)}))
+    (rpc-delete [this path]
+      (rpc-delete this path {}))
+    (rpc-delete [this path params]
+      (execute-request this
+                      {:method :delete
+                        :url (build-url this path)
+                        :query-params (merge
+                                        {:pio_appkey (:api-key this)}
+                                        params)})))
 
 (defn make-client
   "builds the new api-client"
-  [host api-key & {:keys [port] :or {port 8000}}]
+  [^String host ^String api-key & {:keys [port] :or {port 8000}}]
   (RpcClient. host port api-key))
 
 ;; -- User functions
@@ -85,7 +120,7 @@
   Usage:
     (get-user client \"user1\")"
   [^RpcClient client ^String user-id]
-  (rpc-get client (format "/users/%s.json" user-id)))
+  (rpc-get client (str "/users/" user-id ".json")))
 
 (defn add-user
   "add or update user info
@@ -109,6 +144,7 @@
               (merge
                 {:pio_uid user-id}
                 (dissoc user-params :pio_ct)))))
+
 (defn delete-user
   "deletes user by user-id
 
@@ -118,7 +154,7 @@
   Usage:
     (delete-user client \"user1\")"
   [^RpcClient client ^String user-id]
-  (rpc-delete client (format "/users/%s.json" user-id)))
+  (rpc-delete client (str "/users/" user-id ".json")))
 
 ;; ITEM
 (defn add-item
@@ -150,7 +186,7 @@
   Usage:
     (get-item client \"item1\")"
   [^RpcClient client ^String item-id]
-  (rpc-get client (format "/items/%s.json" item-id)))
+  (rpc-get client (str "/items/" item-id ".json")))
 
 (defn delete-item
   "remove item from recommender's dataset
@@ -160,7 +196,7 @@
   Usage:
     (delete-item client \"item1\")"
   [^RpcClient client ^String item-id]
-  (rpc-delete client (format "/items/%s.json" item-id)))
+  (rpc-delete client (str "/items/" item-id ".json")))
 
 ;; USER to ITEM behavior
 (defn add-action
@@ -238,7 +274,7 @@
       (when-not (empty? attributes)
         {:pio_attributes (to-csv-line item-types)})
       (when-not (empty? latlng)
-        {:pio_latlng (to-csv-line)})
+        {:pio_latlng (to-csv-line latlng)})
       (when-not (nil? within)
         {:pio_within within
          :pio_unit unit}))))
@@ -266,6 +302,7 @@
         {:pio_within within
          :pio_unit unit})))))
 
+#+clj
 (comment
 
   (require '[shaman.core :as shaman] :reload)
