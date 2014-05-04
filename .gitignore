@@ -2,9 +2,11 @@
 /classes
 /checkouts
 /samples
+/repl
 pom.xml
 pom.xml.asc
 *.jar
 *.class
 /.lein-*
 /.nrepl-port
+/.repl
