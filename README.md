@@ -3,12 +3,13 @@
 [![Build Status](https://travis-ci.org/timgluz/shaman.svg)](https://travis-ci.org/timgluz/shaman)
 
 
-Shaman is a Clojure/ClojureScript client for Prediction.IO API. 
+Shaman is a Clojure/ClojureScript client for Prediction.IO API.
 With Shaman you can manage your datasets on the recommender engine, get topN recommendations for the user or requests topN similar items.
 
 [shaman "0.2.0-SNAPSHOT"]
 
 [API reference](http://timgluz.github.io/shaman/shaman.core.html)
+[MovieLens demo](https://github.com/timgluz/shaman-movielens)
 
 ## Notes about Clojurescript
 
@@ -62,6 +63,7 @@ Here's simple session on bREPL showing the example workflow with Clojurescript.
 	(.debug js/console (cljs.core.async/<! resp-chan)))
 
 ```
+
 
 
 ## License

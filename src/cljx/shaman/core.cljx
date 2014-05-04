@@ -264,7 +264,7 @@
     (str "/engines/itemrec/" engine-name "/topn.json")
     (merge
       {:pio_uid user-id
-      :pio_n max-n}
+       :pio_n max-n}
       (dissoc extra-params :item-types :attributes :latlng :within :unit)
       (when-not (empty? item-types)
         {:pio_itypes (to-csv-line item-types)})
@@ -298,26 +298,4 @@
       (when-not (nil? within)
         {:pio_within within
          :pio_unit unit})))))
-
-#+clj
-(comment
-  ;; on clojure
-  (require '[shaman.core :as shaman] :reload)
-  (def api-key "pK4cwVhBEMk7IWRTpXd869X5EUjKC9vNeISURqaRaZnXlpWnAeVTlJxWkZTZlkD0")
-  (def client (shaman/make-client "http://10.0.10.2" api-key))
-
-  ;; on clojurescript
-  (load-namespace 'shaman.core)
-  (def api-key "pK4cwVhBEMk7IWRTpXd869X5EUjKC9vNeISURqaRaZnXlpWnAeVTlJxWkZTZlkD0")
-  (def client (shaman.core/make-client "http://10.0.10.2" api-key))
-
-  (shaman.core/get-user client "user1")
-
-  (load-namespace 'ajax.core)
-  (ajax.core/GET "http://blockchain.info/ticker?cors=true")
-  (def resp (ajax.core/GET
-              "http://10.0.10.3/users/user1.json" {:response-format :json}))
-  (debug js/console resp)
-
-  )
 
