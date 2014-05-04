@@ -1,9 +1,11 @@
 (ns shaman.core
+  #+cljs (:require-macros [cljs.core.async.macros :refer [go go-loop]])
   (:require
     #+clj [org.httpkit.client :as http]
     #+clj [cheshire.core :refer [parse-string generate-string]]
     #+clj [taoensso.timbre :as log]
-    #+cljs [ajax.core :as http]))
+    #+cljs [ajax.core :as http]
+    #+cljs [cljs.core.async :refer [<! >! close! chan timeout]]))
 
 #+clj (set! *warn-on-reflection* true)
 
@@ -40,15 +42,6 @@
     (parse-json body)
     (log/error "API error: " (or error body))))
 
-#+cljs
-(defn response-handler
-  "handles clj-ajax responses"
-  [{:keys [status response] :as resp}]
-  (.debug js/console (str "Got response:" resp))
-  (if (< 199 status 300)
-    response
-    (.error js/console (str "Request error: " status))))
-
 ;; -- CLIENT protocols
 (defprotocol RPC
   (build-url [this path])
@@ -64,45 +57,49 @@
     (str (:host this) ":" (:port this) path))
 
   (execute-request [this request-map]
-      (response-handler
-        #+clj @(http/request request-map)
-        #+cljs (let [response (atom "no response")]
-                  (http/ajax-request
-                    (:url request-map)
-                    (:method request-map)
-                    {:params (:query-params request-map)
-                     :format (http/json-format {:keywords? true})
-                     :handler #(reset! response %)})
-                  @response)))
+    #+clj (response-handler @(http/request request-map))
+    #+cljs (let [response-channel (chan 1)]
+             ;; run request
+             (http/ajax-request
+                (:url request-map)
+                (:method request-map)
+                {:params (:query-params request-map)
+                 :format (http/json-format {:keywords? true})
+                 :handler (fn [resp-items]
+                            ;(.debug js/console (str "Handler got: " resp-items))
+                            (go
+                              (>! response-channel resp-items)
+                              (close! response-channel)))})
+             response-channel))
 
-    (rpc-get [this path]
-      (rpc-get this path nil))
-    (rpc-get [this path params]
-      (execute-request this
-                      {:method :get
-                        :url (build-url this path)
-                        :query-params (merge
-                                        {:pio_appkey (:api-key this)}
-                                        params)}))
-    (rpc-post [this path data]
-      (rpc-post this path data {}))
-    (rpc-post [this path data params]
-      (execute-request this
-                      {:method :post
-                        :url (build-url this path)
-                        :query-params (merge
-                                        {:pio_appkey (:api-key this)}
-                                        params)
-                        :body (to-json data)}))
-    (rpc-delete [this path]
-      (rpc-delete this path {}))
-    (rpc-delete [this path params]
-      (execute-request this
-                      {:method :delete
-                        :url (build-url this path)
-                        :query-params (merge
-                                        {:pio_appkey (:api-key this)}
-                                        params)})))
+  (rpc-get [this path]
+    (rpc-get this path nil))
+  (rpc-get [this path params]
+    (execute-request this
+                    {:method :get
+                      :url (build-url this path)
+                      :query-params (merge
+                                      {:pio_appkey (:api-key this)}
+                                      params)}))
+  (rpc-post [this path data]
+    (rpc-post this path data {}))
+  (rpc-post [this path data params]
+    (execute-request this
+                    {:method :post
+                      :url (build-url this path)
+                      :query-params (merge
+                                      {:pio_appkey (:api-key this)}
+                                      params)
+                      :body (to-json data)}))
+  (rpc-delete [this path]
+    (rpc-delete this path {}))
+  (rpc-delete [this path params]
+    (execute-request this
+                    {:method :delete
+                      :url (build-url this path)
+                      :query-params (merge
+                                      {:pio_appkey (:api-key this)}
+                                      params)})))
 
 (defn make-client
   "builds the new api-client"
@@ -304,10 +301,23 @@
 
 #+clj
 (comment
-
+  ;; on clojure
   (require '[shaman.core :as shaman] :reload)
   (def api-key "pK4cwVhBEMk7IWRTpXd869X5EUjKC9vNeISURqaRaZnXlpWnAeVTlJxWkZTZlkD0")
-  (def client (shaman/make-client "10.0.10.2" api-key))
+  (def client (shaman/make-client "http://10.0.10.2" api-key))
+
+  ;; on clojurescript
+  (load-namespace 'shaman.core)
+  (def api-key "pK4cwVhBEMk7IWRTpXd869X5EUjKC9vNeISURqaRaZnXlpWnAeVTlJxWkZTZlkD0")
+  (def client (shaman.core/make-client "http://10.0.10.2" api-key))
+
+  (shaman.core/get-user client "user1")
+
+  (load-namespace 'ajax.core)
+  (ajax.core/GET "http://blockchain.info/ticker?cors=true")
+  (def resp (ajax.core/GET
+              "http://10.0.10.3/users/user1.json" {:response-format :json}))
+  (debug js/console resp)
 
   )
 

@@ -14,6 +14,7 @@
                               [cheshire "5.3.1"]
                               [com.taoensso/timbre "3.1.6"]
                               [org.clojure/clojurescript "0.0-2030"]
+                              [org.clojure/core.async "0.1.301.0-deb34a-alpha"]
                               [cljs-ajax "0.2.3"]
                               [com.keminglabs/cljx "0.3.1"]
                               [org.clojure/tools.nrepl "0.2.3"]]
@@ -45,12 +46,13 @@
   :source-paths ["src/clj" "target/generated/src/clj"]
   :resource-paths ["target/generated/src/cljs"]
   :test-paths ["target/generated/test/clj" "test"]
-  :cljsbuild {:test-commands
+  :cljsbuild {:repl-listen-port 5001
+              :test-commands
                 {"unit" ["phantomjs" :runner
                          "this.literal_js_was_evaluated=true"
                          "target/unit-test.js"]}
               :builds
-                {:dev {:source-paths ["target/generated/src/cljs"]
+                {:dev {:source-paths ["target/generated/src/cljs" "src/cljs"]
                        :compiler {:output-to "target/main.js"
                                   :optimization :whitespace
                                   :pretty-print true}}
